@@ -14,14 +14,14 @@ window.addEventListener('load', function(){
             this.game = game; //This gives the player access to the entire game class (prooperties and methods).
             this.collisionX = this.game.width * 0.5;
             this.collisionY = this.game.height * 0.5;
-            this.collisionRadius = 30;
+            this.collisionRadius = 40;
             this.speedX = 0;
             this.speedY = 0;
             this.dx = 0;
             this.dy = 0;
             this.speedModifier = 4;
             this.spriteWidth = 255;
-            this.spriteHeight = 255;
+            this.spriteHeight = 256;
             this.width = this.spriteWidth;
             this.height = this.spriteHeight;
             this.spriteX;
@@ -33,6 +33,7 @@ window.addEventListener('load', function(){
         };
         draw(context){  //draws and animates the player. Expects arg to specify which canvas to draw on.
             context.drawImage(this.image, this.frameX * this.spriteWidth, this.frameY * this.spriteHeight, this.spriteWidth, this.spriteHeight, this.spriteX, this.spriteY, this.width, this.height);
+            if (this.game.debug){
             context.beginPath();
             context.arc(this.collisionX, this.collisionY, this.collisionRadius, 0, Math.PI * 2);
             context.save(); //save and restore methods allow us to apply specific drawing settings to selected shapes without affecting others (wrap).
@@ -44,11 +45,12 @@ window.addEventListener('load', function(){
             context.moveTo(this.collisionX, this.collisionY);
             context.lineTo(this.game.mouse.x, this.game.mouse.y);
             context.stroke();
-
+            };         
         };
         update(){
             this.dx = this.game.mouse.x - this.collisionX; //Horizontal distance between mouse and sprite.
             this.dy = this.game.mouse.y - this.collisionY; //Veritcal distance between mouse and sprite.
+
             //sprite animation depending on angle between sprite and mouse.
             const angle = Math.atan2(this.dy, this.dx);
             if (angle < -2.74 || angle > 2.74){this.frameY = 6}
@@ -72,6 +74,13 @@ window.addEventListener('load', function(){
             this.collisionY += this.speedY * this.speedModifier;
             this.spriteX = this.collisionX - this.width * 0.5;
             this.spriteY = this.collisionY - this.height * 0.5 - 100;
+            //horizontal boundaries for player sprite.
+            if (this.collisionX < this.collisionRadius){this.collisionX = this.collisionRadius}
+            else if (this.collisionX > this.game.width - this.collisionRadius){this.collisionX = this.game.width - this.collisionRadius};
+            //vertical boundaries for player sprite.
+            if (this.collisionY < this.game.topMargin + this.collisionRadius){this.collisionY = this.game.topMargin + this.collisionRadius}
+            else if (this.collisionY > this.game.height - this.collisionRadius){this.collisionY = this.game.height - this.collisionRadius};
+
             //collisions with obstacles
             this.game.obstacles.forEach(obstacle => {
                 let [collision, distance, sumOfRadii, dx, dy] = this.game.checkCollision(this, obstacle); //JavaScript destructuring.
@@ -91,7 +100,7 @@ window.addEventListener('load', function(){
             this.game = game;
             this.collisionX = Math.random() * this.game.width;
             this.collisionY = Math.random() * this.game.height;
-            this.collisionRadius = 60;
+            this.collisionRadius = 40;
             this.image = document.getElementById('obstacles');
             this.spriteWidth = 250;
             this.spriteHeight = 250;
@@ -104,6 +113,7 @@ window.addEventListener('load', function(){
         };
         draw(context){
             context.drawImage(this.image, this.frameX * this.spriteWidth, this.frameY * this.spriteHeight, this.spriteWidth, this.spriteHeight, this.spriteX, this.spriteY, this.width, this.height);
+            if (this.game.debug){
             context.beginPath();
             context.arc(this.collisionX,this.collisionY,this.collisionRadius,0,Math.PI * 2);
             context.save(); //save and restore methods allow us to apply specific drawing settings to selected shapes without affecting others (wrap).
@@ -111,6 +121,7 @@ window.addEventListener('load', function(){
             context.fill();
             context.restore();
             context.stroke();
+            };            
         };
     };
     
@@ -120,7 +131,11 @@ window.addEventListener('load', function(){
             this.width = this.canvas.width; //takes reference to canvas element and sets height and width of the game to match canvas element.
             this.height = this.canvas.height;
             this.topMargin = 260;
+            this.debug = false;
             this.player = new Player(this); //this auto creates player when creating an instance of game.
+            this.fps = 70;
+            this.timer = 0;
+            this.interval = 1000/this.fps;
             this.obstacles = [];
             this.numberOfObstacles = 5;
             this.mouse = {
@@ -146,11 +161,19 @@ window.addEventListener('load', function(){
                     this.mouse.y = e.offsetY;
                 }
             });
+            window.addEventListener('keydown', e => {
+                if (e.key == 'd'){this.debug = !this.debug};
+            });
         };
-        render(context){  //draws and update all objects in the game.
-            this.obstacles.forEach(obstacle => obstacle.draw(context));
-            this.player.draw(context);
-            this.player.update();
+        render(context, deltaTime){  //draws and update all objects in the game.
+            if (this.timer > this.interval){
+                ctx.clearRect(0, 0, this.width, this.height);
+                this.obstacles.forEach(obstacle => obstacle.draw(context));
+                this.player.draw(context);
+                this.player.update();
+                this.timer = 0;
+            };
+            this.timer += deltaTime;
         };
         checkCollision(a, b){ //Check the distance between 2 spheres and see if radii overlap.
             const dx = a.collisionX - b.collisionX;
@@ -174,7 +197,7 @@ window.addEventListener('load', function(){
                         overlap = true;
                     };
                 });
-                const margin =  testObstacle.collisionRadius * 2; //Adds margins to the edges of the game field for player navigation
+                const margin =  testObstacle.collisionRadius * 3; //Adds margins to the edges of the game field for player navigation
                 if (!overlap && testObstacle.spriteX > 0 && testObstacle.spriteX < this.width - testObstacle.width && testObstacle.collisionY > this.topMargin + margin && testObstacle.collisionY < this.height - margin){
                     this.obstacles.push(testObstacle);
                 };
@@ -189,12 +212,14 @@ window.addEventListener('load', function(){
     console.log(game);
 
     //To draw and update game over and over to create illusion of movement. 
-    function animate(){
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        game.render(ctx);
+    let lastTime = 0;
+    function animate(timeStamp){
+        const deltaTime = timeStamp - lastTime;
+        lastTime = timeStamp;
+        game.render(ctx, deltaTime);
         requestAnimationFrame(animate);
     };
-    animate();
+    animate(0);
 
 });
 
