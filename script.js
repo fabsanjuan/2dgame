@@ -7,7 +7,7 @@ window.addEventListener('load', function(){
     //Optimization: Frequent changes to canvas state affects performance. Define canvas properties in code block running as little as possible.
     ctx.fillStyle = 'white';
     ctx.lineWidth = 3;
-    ctx.strokeStyle = 'white';
+    ctx.strokeStyle = 'black';
     ctx.font = '40px Helvetica';
     ctx.textAlign = 'center';
 
@@ -146,7 +146,7 @@ window.addEventListener('load', function(){
             this.spriteX;
             this.spriteY;
             this.hatchTimer = 0;
-            this.hatchInterval = 5000;
+            this.hatchInterval = 9000;
             this.markedForDeletion = false;
         };
         draw(context){
@@ -178,7 +178,7 @@ window.addEventListener('load', function(){
                 };
             });
             //handles hatching
-            if (this.hatchTimer > this.hatchInterval){
+            if (this.hatchTimer > this.hatchInterval || this.collisionY < this.game.topMargin){
                 this.game.hatchlings.push(new Larva(this.game, this.collisionX, this.collisionY));
                 this.markedForDeletion = true;
                 this.game.removeGameObjects();
@@ -223,10 +223,13 @@ window.addEventListener('load', function(){
             this.spriteX = this.collisionX - this.width * 0.5;
             this.spriteY = this.collisionY - this.height * 0.5 - 40;
             //larva beyond safety boundary
-            if (this.collisionY < this.game.topMargin - this.collisionRadius * 3.5){
+            if (this.collisionY < this.game.topMargin - this.collisionRadius * 2.5){
                 this.markedForDeletion = true;
                 this.game.removeGameObjects();
                 this.game.score++;
+                for (let i = 0; i < 4; i++){
+                    this.game.particles.push(new Firefly(this.game, this.collisionX, this.collisionY, 'yellow'));
+                };
             }
             //collisions with objects
             let collisionObjects = [this.game.player, ...this.game.obstacles]; //spread operator ... 
@@ -245,6 +248,9 @@ window.addEventListener('load', function(){
                     this.markedForDeletion = true;
                     this.game.removeGameObjects();
                     this.game.lostHatchlings++;
+                    for (let i = 0; i < 5; i++){
+                        this.game.particles.push(new Spark(this.game, this.collisionX, this.collisionY, 'red'));
+                    };
                 };
             });
         };
@@ -255,7 +261,7 @@ window.addEventListener('load', function(){
             this.game = game;
             this.collisionRadius = 40;
             this.speedX = Math.random() * 3 + 0.5;
-            this.image = document.getElementById('toad');
+            this.image = document.getElementById('toads');
             this.spriteWidth = 140;
             this.spriteHeight = 260;
             this.width = this.spriteWidth;
@@ -264,9 +270,11 @@ window.addEventListener('load', function(){
             this.collisionY = this.game.topMargin + (Math.random() * (this.game.height - this.game.topMargin));
             this.spriteX;
             this.spriteY;
+            this.frameX = 0;
+            this.frameY = Math.floor(Math.random() * 4);
         };
         draw(context){
-            context.drawImage(this.image, this.spriteX, this.spriteY);
+            context.drawImage(this.image, this.frameX, this.frameY * this.spriteHeight, this.spriteWidth, this.spriteHeight, this.spriteX, this.spriteY, this.width, this.height);
             if (this.game.debug){
                 context.beginPath();
                 context.arc(this.collisionX,this.collisionY,this.collisionRadius,0,Math.PI * 2);
@@ -284,6 +292,7 @@ window.addEventListener('load', function(){
             if (this.spriteX + this.width < 0){ //reuse objects when they go off screen instead of destory and create new ones.
                 this.collisionX = this.game.width + Math.random() * this.game.width * 0.5;
                 this.collisionY = this.game.topMargin + (Math.random() * (this.game.height - this.game.topMargin));
+                this.frameY = Math.floor(Math.random() * 4);
             };
             let collisionObjects = [this.game.player, ...this.game.obstacles]; //spread operator ... 
             collisionObjects.forEach( object => {
@@ -295,6 +304,56 @@ window.addEventListener('load', function(){
                     this.collisionY = object.collisionY + (sumOfRadii + 1) * unit_y;
                 }
             });
+        };
+    };
+    //Use subclasses for all particle effects.
+    class Particle {
+        constructor(game, x, y, color){
+            this.game = game;
+            this.collisionX = x;
+            this.collisionY = y;
+            this.color = color;
+            this.radius = Math.floor(Math.random() * 10 + 5); //One way to optimize is to use object pooling instead.
+            this.speedX = Math.random() * 6 - 3;
+            this.speedY = Math.random() * 2 + 0.5;
+            this.angle = 0;
+            this.va = Math.random() * 0.1 + 0.01;
+            this.markedForDeletion = false;
+        };
+        draw(context){
+            context.save();
+            context.fillStyle = this.color;
+            context.beginPath();
+            context.arc(this.collisionX, this.collisionY, this.radius, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+            context.restore();
+        };
+
+    };
+
+    class Firefly extends Particle {
+        update(){ //describes the motion of the fireflies
+            this.angle += this.va;
+            this.collisionX += Math.cos(this.angle) * this.speedX;
+            this.collisionY -= this.speedY;
+            if (this.collisionY < 0 - this.radius){
+                this.markedForDeletion = true;
+                this.game.removeGameObjects();
+            };
+        };
+    };
+
+    class Spark extends Particle {
+        update(){ // describes the motion of the sparks. 
+            this.angle += this.va * 0.5;
+            this.collisionX -= Math.sin(this.angle) * this.speedX;
+            this.collisionY -= Math.cos(this.angle) * this.speedY;
+            if (this.radius > 0.1) this.radius -= 0.05;
+            if (this.radius < 0.2){
+                this.markedForDeletion = true;
+                this.game.removeGameObjects();
+            };
         };
     };
     
@@ -317,8 +376,11 @@ window.addEventListener('load', function(){
             this.numberOfObstacles = 3;
             this.enemies = [];
             this.hatchlings = [];
+            this.particles = [];
             this.gameObjects = [];
             this.score = 0;
+            this.winningScore = 5;
+            this.gameOver = false;
             this.lostHatchlings = 0;
             this.mouse = {
                 x: this.width * 0.5,
@@ -350,7 +412,7 @@ window.addEventListener('load', function(){
         render(context, deltaTime){  //draws and update all objects in the game.
             if (this.timer > this.interval){
                 ctx.clearRect(0, 0, this.width, this.height);
-                this.gameObjects = [this.player, ...this.eggs, ...this.obstacles, ...this.enemies, ...this.hatchlings];
+                this.gameObjects = [this.player, ...this.eggs, ...this.obstacles, ...this.enemies, ...this.hatchlings, ...this.particles];
                 this.gameObjects.sort((a, b) => { //sorts drawn objects by vertial position.
                     return a.collisionY - b.collisionY;
                 });
@@ -368,7 +430,38 @@ window.addEventListener('load', function(){
                 this.eggTimer = 0;
             } else {
                 this.eggTimer += deltaTime;
-            }
+            };
+
+            //display game score
+            context.save();
+            context.textAlign = 'left';
+            context.fillText('Score ' + (this.score - this.lostHatchlings), 25, 50);
+            context.restore();
+
+            //Win/lose message
+            if (this.score >= this.winningScore){
+                this.gameOver = true;
+                context.save();
+                context.fillStyle = 'rgba(0,0,0,0.5)';
+                context.fillRect(0, 0, this.width, this.height);
+                context.fillStyle = 'white';
+                context.textAlign = 'center';
+                let message1;
+                let message2;
+                if (this.lostHatchlings <= 5){
+                    message1 = "Bullseye";
+                    message2 = "You bullied the bullies";
+                } else {
+                    message1 = 'Oops';
+                    message2 = 'You lost ' + this.lostHatchlings + ' hatchlings, try again?';
+                };
+                context.font = '130px Helvetica'; //Fonts can be selected from Google fonts to change the style.
+                context.fillText(message1, this.width * 0.5, this.height * 0.5 - 30);
+                context.font = '40px Helvetica';
+                context.fillText(message2, this.width * 0.5, this.height * 0.5 + 60);
+                context.fillText('Final Score ' + this.score + '. Press "r" to try again', this.width * 0.5, this.height * 0.5 + 120);
+                context.restore();
+            };
         };
         checkCollision(a, b){ //Check the distance between 2 spheres and see if radii overlap.
             const dx = a.collisionX - b.collisionX;
@@ -385,7 +478,8 @@ window.addEventListener('load', function(){
         };
         removeGameObjects(){
             this.eggs = this.eggs.filter(object => !object.markedForDeletion);  //create new array with eggs marked for del filtered out.
-            this.hatchlings = this.hatchlings.filter(object => !object.markedForDeletion);  //create new array with eggs marked for del filtered out.
+            this.hatchlings = this.hatchlings.filter(object => !object.markedForDeletion);
+            this.particles = this.particles.filter(object => !object.markedForDeletion);
         };
         init(){
             for (let i=0; i < 3; i++){
@@ -425,7 +519,9 @@ window.addEventListener('load', function(){
         const deltaTime = timeStamp - lastTime;
         lastTime = timeStamp;
         game.render(ctx, deltaTime);
-        requestAnimationFrame(animate);
+        if (!game.gameOver){
+            requestAnimationFrame(animate);
+        };
     };
     animate(0);
 
