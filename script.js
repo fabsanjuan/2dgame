@@ -8,7 +8,7 @@ window.addEventListener('load', function(){
     ctx.fillStyle = 'white';
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'black';
-    ctx.font = '40px Helvetica';
+    ctx.font = '40px Bangers';
     ctx.textAlign = 'center';
 
     //object oriented to make game modular. Player and game class to manage game logic.
@@ -34,6 +34,13 @@ window.addEventListener('load', function(){
             this.image = document.getElementById('bull');
 
         };
+        restart(){
+            this.collisionX = this.game.width * 0.5;
+            this.collisionY = this.game.height * 0.5;
+            this.spriteX = this.collisionX - this.width * 0.5;
+            this.spriteY = this.collisionY - this.height * 0.5 - 100;
+        };
+
         draw(context){  //draws and animates the player. Expects arg to specify which canvas to draw on.
             context.drawImage(this.image, this.frameX * this.spriteWidth, this.frameY * this.spriteHeight, this.spriteWidth, this.spriteHeight, this.spriteX, this.spriteY, this.width, this.height);
             if (this.game.debug){
@@ -226,13 +233,15 @@ window.addEventListener('load', function(){
             if (this.collisionY < this.game.topMargin - this.collisionRadius * 2.5){
                 this.markedForDeletion = true;
                 this.game.removeGameObjects();
-                this.game.score++;
-                for (let i = 0; i < 4; i++){
-                    this.game.particles.push(new Firefly(this.game, this.collisionX, this.collisionY, 'yellow'));
+                if (!this.game.gameOver) {
+                    this.game.score++;
+                    for (let i = 0; i < 4; i++){
+                        this.game.particles.push(new Firefly(this.game, this.collisionX, this.collisionY, 'yellow'));
                 };
-            }
+                };
+            };
             //collisions with objects
-            let collisionObjects = [this.game.player, ...this.game.obstacles]; //spread operator ... 
+            let collisionObjects = [this.game.player, ...this.game.obstacles, ...this.game.eggs]; //spread operator ... 
             collisionObjects.forEach( object => {
                 let [collision, distance, sumOfRadii, dx, dy] = this.game.checkCollision(this, object);
                 if (collision){
@@ -247,9 +256,11 @@ window.addEventListener('load', function(){
                 if (this.game.checkCollision(this, enemy)[0]){
                     this.markedForDeletion = true;
                     this.game.removeGameObjects();
-                    this.game.lostHatchlings++;
                     for (let i = 0; i < 5; i++){
                         this.game.particles.push(new Spark(this.game, this.collisionX, this.collisionY, 'red'));
+                    };
+                    if (!this.game.gameOver){
+                        this.game.lostHatchlings++;
                     };
                 };
             });
@@ -289,7 +300,7 @@ window.addEventListener('load', function(){
             this.spriteX = this.collisionX - this.width * 0.5 + 10;
             this.spriteY = this.collisionY - this.height * 0.5 - 50;
             this.collisionX -= this.speedX;
-            if (this.spriteX + this.width < 0){ //reuse objects when they go off screen instead of destory and create new ones.
+            if (this.spriteX + this.width < 0 && !this.game.gameOver){ //reuse objects when they go off screen instead of destory and create new ones.
                 this.collisionX = this.game.width + Math.random() * this.game.width * 0.5;
                 this.collisionY = this.game.topMargin + (Math.random() * (this.game.height - this.game.topMargin));
                 this.frameY = Math.floor(Math.random() * 4);
@@ -379,7 +390,7 @@ window.addEventListener('load', function(){
             this.particles = [];
             this.gameObjects = [];
             this.score = 0;
-            this.winningScore = 5;
+            this.winningScore = 10;
             this.gameOver = false;
             this.lostHatchlings = 0;
             this.mouse = {
@@ -406,7 +417,11 @@ window.addEventListener('load', function(){
                 }
             });
             window.addEventListener('keydown', e => {
-                if (e.key == 'd'){this.debug = !this.debug};
+                if (e.key == 'd'){
+                    this.debug = !this.debug
+                } else if (e.key == 'r'){
+                    this.restart()
+                };
             });
         };
         render(context, deltaTime){  //draws and update all objects in the game.
@@ -425,7 +440,7 @@ window.addEventListener('load', function(){
             this.timer += deltaTime;
 
             //periodically add eggs.
-            if (this.eggTimer > this.eggInterval && this.eggs.length < this.maxEggs){
+            if (this.eggTimer > this.eggInterval && this.eggs.length < this.maxEggs && !this.gameOver){
                 this.addEgg();
                 this.eggTimer = 0;
             } else {
@@ -435,7 +450,8 @@ window.addEventListener('load', function(){
             //display game score
             context.save();
             context.textAlign = 'left';
-            context.fillText('Score ' + (this.score - this.lostHatchlings), 25, 50);
+            context.fillText('Score ' + this.score, 25, 50);
+            context.fillText('Lost ' + this.lostHatchlings, 25, 100); 
             context.restore();
 
             //Win/lose message
@@ -446,6 +462,9 @@ window.addEventListener('load', function(){
                 context.fillRect(0, 0, this.width, this.height);
                 context.fillStyle = 'white';
                 context.textAlign = 'center';
+                context.shadowOffsetX = 4;
+                context.shadowOffsetY = 4;
+                context.shadowColor = 'black';
                 let message1;
                 let message2;
                 if (this.lostHatchlings <= 5){
@@ -455,11 +474,11 @@ window.addEventListener('load', function(){
                     message1 = 'Oops';
                     message2 = 'You lost ' + this.lostHatchlings + ' hatchlings, try again?';
                 };
-                context.font = '130px Helvetica'; //Fonts can be selected from Google fonts to change the style.
+                context.font = '130px Bangers'; //Fonts can be selected from Google fonts to change the style.
                 context.fillText(message1, this.width * 0.5, this.height * 0.5 - 30);
-                context.font = '40px Helvetica';
+                context.font = '40px Bangers';
                 context.fillText(message2, this.width * 0.5, this.height * 0.5 + 60);
-                context.fillText('Final Score ' + this.score + '. Press "r" to try again', this.width * 0.5, this.height * 0.5 + 120);
+                context.fillText('Final Score ' + (this.score - this.lostHatchlings) + '. Press "r" to try again', this.width * 0.5, this.height * 0.5 + 120); //TODO: add a new line after the score
                 context.restore();
             };
         };
@@ -480,6 +499,23 @@ window.addEventListener('load', function(){
             this.eggs = this.eggs.filter(object => !object.markedForDeletion);  //create new array with eggs marked for del filtered out.
             this.hatchlings = this.hatchlings.filter(object => !object.markedForDeletion);
             this.particles = this.particles.filter(object => !object.markedForDeletion);
+        };
+        restart(){
+            this.player.restart();
+            this.obstacles = [];
+            this.eggs = [];
+            this.enemies = [];
+            this.hatchlings = [];
+            this.particles = [];
+            this.mouse = {
+                x: this.width * 0.5,
+                y: this.height * 0.5,
+                pressed: false
+            };
+            this.score = 0;
+            this.lostHatchlings = 0;
+            this.gameOver = false;
+            this.init();
         };
         init(){
             for (let i=0; i < 3; i++){
@@ -519,18 +555,11 @@ window.addEventListener('load', function(){
         const deltaTime = timeStamp - lastTime;
         lastTime = timeStamp;
         game.render(ctx, deltaTime);
-        if (!game.gameOver){
-            requestAnimationFrame(animate);
-        };
+        requestAnimationFrame(animate);
     };
     animate(0);
 
 });
-
-
-
-
-
 
 
 
