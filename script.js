@@ -43,6 +43,7 @@ window.addEventListener('load', function(){
 
         draw(context){  //draws and animates the player. Expects arg to specify which canvas to draw on.
             context.drawImage(this.image, this.frameX * this.spriteWidth, this.frameY * this.spriteHeight, this.spriteWidth, this.spriteHeight, this.spriteX, this.spriteY, this.width, this.height);
+            //Debugging code to view hit box and player movement path. 
             if (this.game.debug){
             context.beginPath();
             context.arc(this.collisionX, this.collisionY, this.collisionRadius, 0, Math.PI * 2);
@@ -74,7 +75,7 @@ window.addEventListener('load', function(){
 
             const distance = Math.hypot(this.dy, this.dx);
             if (distance > this.speedModifier){ //only move the player if the distance is greater than speed mod.
-                this.speedX = this.dx/distance || 0;
+                this.speedX = this.dx/distance || 0; //TODO:Logical OR operator????
                 this.speedY = this.dy/distance || 0;
             } else {
                 this.speedX = 0;
@@ -391,7 +392,9 @@ window.addEventListener('load', function(){
             this.gameObjects = [];
             this.score = 0;
             this.winningScore = 10;
+            this.lives = 10;
             this.gameOver = false;
+            this.reset = false;
             this.lostHatchlings = 0;
             this.mouse = {
                 x: this.width * 0.5,
@@ -428,7 +431,7 @@ window.addEventListener('load', function(){
             if (this.timer > this.interval){
                 ctx.clearRect(0, 0, this.width, this.height);
                 this.gameObjects = [this.player, ...this.eggs, ...this.obstacles, ...this.enemies, ...this.hatchlings, ...this.particles];
-                this.gameObjects.sort((a, b) => { //sorts drawn objects by vertial position.
+                this.gameObjects.sort((a, b) => { //sorts drawn objects by vertial position. Objects in canvas are layered in order they are drawn.
                     return a.collisionY - b.collisionY;
                 });
                 this.gameObjects.forEach(object => {
@@ -447,15 +450,27 @@ window.addEventListener('load', function(){
                 this.eggTimer += deltaTime;
             };
 
-            //display game score
+            //display game score and timer
+            let livesLeft = this.lives - this.lostHatchlings;
+            let gameSec = Math.floor((lastTime/1000));
+            let startTime = 150;
+            let elapsedTime = startTime - gameSec;
+            let displayMin = Math.floor(elapsedTime / 60);
+            let displaySec = elapsedTime % 60;
+            let twoDigits = (displaySec < 10 ? "0" : "");
+
+            
             context.save();
-            context.textAlign = 'left';
-            context.fillText('Score ' + this.score, 25, 50);
-            context.fillText('Lost ' + this.lostHatchlings, 25, 100); 
+            if(elapsedTime > 0 & livesLeft > 0){
+                context.textAlign = 'left';
+                context.fillText('Score ' + this.score, 25, 50);
+                context.fillText('Lives ' + livesLeft + "      " + lastTime, 25, 100); 
+                context.fillText('Time ' + displayMin + " : " + twoDigits + displaySec, 1050, 50);
+            }
             context.restore();
 
             //Win/lose message
-            if (this.score >= this.winningScore){
+            if (livesLeft <= 0 || elapsedTime <= 0){
                 this.gameOver = true;
                 context.save();
                 context.fillStyle = 'rgba(0,0,0,0.5)';
@@ -478,7 +493,7 @@ window.addEventListener('load', function(){
                 context.fillText(message1, this.width * 0.5, this.height * 0.5 - 30);
                 context.font = '40px Bangers';
                 context.fillText(message2, this.width * 0.5, this.height * 0.5 + 60);
-                context.fillText('Final Score ' + (this.score - this.lostHatchlings) + '. Press "r" to try again', this.width * 0.5, this.height * 0.5 + 120); //TODO: add a new line after the score
+                context.fillText('Final Score ' + (this.score) + '. Press "r" to try again', this.width * 0.5, this.height * 0.5 + 120); //TODO: add a new line after the score
                 context.restore();
             };
         };
@@ -549,15 +564,16 @@ window.addEventListener('load', function(){
     game.init();
     console.log(game);
 
-    //To draw and update game over and over to create illusion of movement. 
+    //To draw and update game over and over. 
     let lastTime = 0;
     function animate(timeStamp){
-        const deltaTime = timeStamp - lastTime;
+        let deltaTime = timeStamp - lastTime;
         lastTime = timeStamp;
         game.render(ctx, deltaTime);
         requestAnimationFrame(animate);
+        console.log(lastTime, timeStamp);
     };
-    animate(0);
+    animate(lastTime);
 
 });
 
