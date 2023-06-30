@@ -392,7 +392,7 @@ window.addEventListener('load', function(){
             this.gameObjects = [];
             this.score = 0;
             this.winningScore = 10;
-            this.lives = 10;
+            this.lives = 5;
             this.gameOver = false;
             this.reset = false;
             this.lostHatchlings = 0;
@@ -452,7 +452,7 @@ window.addEventListener('load', function(){
 
             //display game score and timer
             let livesLeft = this.lives - this.lostHatchlings;
-            let gameSec = Math.floor((lastTime/1000));
+            let gameSec = Math.floor((lastTime / 1000));
             let startTime = 150;
             let elapsedTime = startTime - gameSec;
             let displayMin = Math.floor(elapsedTime / 60);
@@ -464,7 +464,7 @@ window.addEventListener('load', function(){
             if(elapsedTime > 0 & livesLeft > 0){
                 context.textAlign = 'left';
                 context.fillText('Score ' + this.score, 25, 50);
-                context.fillText('Lives ' + livesLeft + "      " + lastTime, 25, 100); 
+                context.fillText('Lives ' + livesLeft, 25, 100); 
                 context.fillText('Time ' + displayMin + " : " + twoDigits + displaySec, 1050, 50);
             }
             context.restore();
@@ -482,18 +482,18 @@ window.addEventListener('load', function(){
                 context.shadowColor = 'black';
                 let message1;
                 let message2;
-                if (this.lostHatchlings <= 5){
+                if (elapsedTime <=0){
                     message1 = "Bullseye";
                     message2 = "You bullied the bullies";
                 } else {
                     message1 = 'Oops';
-                    message2 = 'You lost ' + this.lostHatchlings + ' hatchlings, try again?';
+                    message2 = 'You lost, try again?';
                 };
                 context.font = '130px Bangers'; //Fonts can be selected from Google fonts to change the style.
                 context.fillText(message1, this.width * 0.5, this.height * 0.5 - 30);
                 context.font = '40px Bangers';
                 context.fillText(message2, this.width * 0.5, this.height * 0.5 + 60);
-                context.fillText('Final Score ' + (this.score) + '. Press "r" to try again', this.width * 0.5, this.height * 0.5 + 120); //TODO: add a new line after the score
+                context.fillText('Final Score ' + (this.score) + '. Press "F5" to try again', this.width * 0.5, this.height * 0.5 + 120); //TODO: add a new line after the score
                 context.restore();
             };
         };
@@ -571,9 +571,9 @@ window.addEventListener('load', function(){
         lastTime = timeStamp;
         game.render(ctx, deltaTime);
         requestAnimationFrame(animate);
-        console.log(lastTime, timeStamp);
+        //console.log(lastTime, timeStamp, deltaTime, game.reset);
     };
-    animate(lastTime);
+    animate(0);
 
 });
 
