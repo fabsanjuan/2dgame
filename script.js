@@ -394,7 +394,9 @@ window.addEventListener('load', function(){
             this.winningScore = 10;
             this.lives = 5;
             this.gameOver = false;
-            this.reset = false;
+            this.gameSec = 0;
+            this.gameTimer = 0;
+            this.gameInterval = 1000;
             this.lostHatchlings = 0;
             this.mouse = {
                 x: this.width * 0.5,
@@ -452,9 +454,14 @@ window.addEventListener('load', function(){
 
             //display game score and timer
             let livesLeft = this.lives - this.lostHatchlings;
-            let gameSec = Math.floor((lastTime / 1000));
             let startTime = 150;
-            let elapsedTime = startTime - gameSec;
+            if (this.gameTimer > this.gameInterval){
+                this.gameSec +=1;
+                this.gameTimer = 0;
+            } else {
+                this.gameTimer += deltaTime;
+            }
+            let elapsedTime = startTime - this.gameSec;
             let displayMin = Math.floor(elapsedTime / 60);
             let displaySec = elapsedTime % 60;
             let twoDigits = (displaySec < 10 ? "0" : "");
@@ -530,6 +537,7 @@ window.addEventListener('load', function(){
             this.score = 0;
             this.lostHatchlings = 0;
             this.gameOver = false;
+            this.gameSec = 0;
             this.init();
         };
         init(){
@@ -571,7 +579,7 @@ window.addEventListener('load', function(){
         lastTime = timeStamp;
         game.render(ctx, deltaTime);
         requestAnimationFrame(animate);
-        //console.log(lastTime, timeStamp, deltaTime, game.reset);
+        //console.log(lastTime, timeStamp, deltaTime);
     };
     animate(0);
 
