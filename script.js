@@ -500,7 +500,7 @@ window.addEventListener('load', function(){
                 context.fillText(message1, this.width * 0.5, this.height * 0.5 - 30);
                 context.font = '40px Bangers';
                 context.fillText(message2, this.width * 0.5, this.height * 0.5 + 60);
-                context.fillText('Final Score ' + (this.score) + '. Press "F5" to try again', this.width * 0.5, this.height * 0.5 + 120); //TODO: add a new line after the score
+                context.fillText('Final Score ' + (this.score) + '. Press "r" to try again', this.width * 0.5, this.height * 0.5 + 120); //TODO: add a new line after the score
                 context.restore();
             };
         };
